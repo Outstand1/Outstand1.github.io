@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expression Hive · Daily</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --honey: #F4A500;
+    --honey-dark: #C27D00;
+    --cream: #FFF8E7;
+    --dark: #1A1208;
+    --mid: #4A3520;
+    --light-mid: #8A6840;
+    --outer: #FDE68A;
+    --found-bg: #FFFBF0;
+    --border: #E8C96A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--cream);
+    color: var(--dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(244,165,0,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(244,165,0,0.08) 0%, transparent 60%);
+  }
+  h1 { font-family: 'Playfair Display', serif; font-size: 2.4rem; font-weight: 900; letter-spacing: -0.02em; color: var(--dark); margin-bottom: 4px; }
+  h1 span { color: var(--honey); }
+  .subtitle { font-size: 0.75rem; color: var(--light-mid); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+  .rules-line { font-size: 0.72rem; color: var(--light-mid); margin-bottom: 18px; line-height: 1.6; text-align: center; }
+
+  /* Daily badge */
+  .daily-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .badge-pill {
+    background: var(--dark);
+    color: var(--honey);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .badge-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--light-mid);
+    letter-spacing: 0.06em;
+  }
+  .next-puzzle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--light-mid);
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Timer ── */
+  .timer-wrap {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .timer-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .timer-track {
+    width: 220px;
+    height: 6px;
+    background: rgba(74,53,32,0.15);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .timer-bar {
+    height: 100%;
+    width: 100%;
+    background: var(--honey);
+    border-radius: 3px;
+    transition: width 1s linear, background 0.5s;
+  }
+  .timer-bar.urgent { background: #E53935; }
+  .timer-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark);
+    letter-spacing: 0.04em;
+    min-width: 60px;
+    text-align: center;
+  }
+  .timer-text.urgent { color: #E53935; }
+  .timer-goal { font-size: 0.65rem; color: var(--light-mid); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .restart-btn {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--light-mid);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+  }
+  .restart-btn:hover { background: var(--honey); border-color: var(--honey-dark); color: var(--dark); transform: translateY(-1px); }
+  .restart-btn:active { transform: scale(0.95); }
+
+  .mode-btn {
+    background: var(--dark);
+    border: 1.5px solid rgba(244,165,0,0.4);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--honey);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+  }
+  .mode-btn:hover { background: rgba(244,165,0,0.15); border-color: var(--honey); transform: translateY(-1px); }
+  .mode-btn:active { transform: scale(0.95); }
+
+  .game-layout { display: flex; gap: 32px; align-items: flex-start; width: 100%; max-width: 860px; }
+  .left-panel { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; gap: 16px; }
+  .target-display { text-align: center; background: var(--dark); color: var(--honey); border-radius: 14px; padding: 12px 28px; font-family: 'Playfair Display', serif; letter-spacing: 0.05em; }
+  .target-display .label { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--light-mid); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 2px; }
+  .target-number { font-size: 2.2rem; font-weight: 900; line-height: 1; }
+  .expression-bar { background: white; border: 2px solid var(--border); border-radius: 12px; padding: 12px 18px; width: 340px; min-height: 54px; font-family: 'DM Mono', monospace; font-size: 1.3rem; color: var(--dark); display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  .expression-bar.shake { animation: shake 0.3s; }
+  .expression-bar .expr-text { flex: 1; word-break: break-all; line-height: 1.4; }
+  .expression-bar .cursor { width: 2px; height: 1.4em; background: var(--honey); animation: blink 1s step-end infinite; flex-shrink: 0; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .honeycomb-wrap { position: relative; width: 300px; height: 290px; }
+  .hex-btn { position: absolute; width: 88px; height: 88px; cursor: pointer; border: none; background: none; padding: 0; }
+  .hex-btn.disabled-game { pointer-events: none; opacity: 0.5; }
+  .hex-shape { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); transition: filter 0.15s, transform 0.15s; user-select: none; }
+  .hex-btn.center .hex-shape { background: var(--honey); color: var(--dark); }
+  .hex-btn.outer .hex-shape { background: var(--outer); color: var(--mid); }
+  .hex-btn:hover .hex-shape { filter: brightness(1.08); transform: scale(1.04); }
+  .hex-btn.tapped .hex-shape { filter: brightness(0.88); transform: scale(0.96); }
+  .ops-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 300px; }
+  .op-btn { background: white; border: 2px solid var(--border); border-radius: 10px; padding: 10px 18px; font-family: 'DM Mono', monospace; font-size: 1.25rem; color: var(--mid); cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.1s; min-width: 50px; text-align: center; }
+  .op-btn:hover { background: var(--honey); border-color: var(--honey-dark); color: var(--dark); transform: translateY(-2px); }
+  .op-btn:active { transform: scale(0.93); }
+  .op-btn:disabled { opacity: 0.4; pointer-events: none; }
+  .action-row { display: flex; gap: 10px; width: 340px; justify-content: center; }
+  .action-btn { padding: 10px 22px; border-radius: 24px; border: none; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.05em; transition: transform 0.1s, filter 0.15s; }
+  .action-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .action-btn:active { transform: scale(0.95); }
+  .action-btn:disabled { opacity: 0.4; pointer-events: none; }
+  .btn-delete { background: #FEE2E2; color: #C53030; border: 1.5px solid #FECACA; }
+  .btn-clear  { background: #F3F4F6; color: var(--mid); border: 1.5px solid #E5E7EB; }
+  .btn-enter  { background: var(--honey); color: var(--dark); font-weight: 700; border: 1.5px solid var(--honey-dark); flex: 1; }
+  .right-panel { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 220px; }
+  .score-box { background: var(--dark); color: var(--honey); border-radius: 14px; padding: 16px 20px; text-align: center; position: relative; overflow: hidden; }
+  .score-box .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--light-mid); margin-bottom: 4px; }
+  .score-box .score-num { font-family: 'Playfair Display', serif; font-size: 3rem; font-weight: 900; line-height: 1; }
+  .score-box .score-goal { font-size: 0.8rem; color: var(--light-mid); margin-top: 4px; letter-spacing: 0.08em; }
+  .score-fill { position: absolute; bottom: 0; left: 0; height: 4px; background: var(--honey); transition: width 0.4s ease-out; border-radius: 0 0 14px 14px; }
+  .found-list-wrap { background: white; border: 2px solid var(--border); border-radius: 14px; padding: 16px; flex: 1; min-height: 200px; max-height: 380px; overflow-y: auto; }
+  .found-list-wrap .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--light-mid); margin-bottom: 12px; }
+  .found-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; background: var(--found-bg); border: 1px solid var(--border); animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes popIn { from { transform: scale(0.8) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+  .found-expr { font-family: 'DM Mono', monospace; font-size: 0.82rem; color: var(--mid); word-break: break-all; }
+  .found-pts  { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: var(--honey-dark); flex-shrink: 0; margin-left: 8px; }
+  .empty-hint { color: #CCC; font-size: 0.75rem; text-align: center; margin-top: 20px; line-height: 1.8; }
+  .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--dark); color: var(--honey); padding: 10px 24px; border-radius: 24px; font-size: 0.85rem; font-family: 'DM Mono', monospace; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s; opacity: 0; pointer-events: none; z-index: 100; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* ── Overlay ── */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(26,18,8,0.85); z-index: 200; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 24px; }
+  .overlay.show { display: flex; }
+  .ovl-emoji { font-size: 4rem; animation: popBig 0.6s cubic-bezier(0.34,1.56,0.64,1); margin-bottom: 12px; }
+  @keyframes popBig { from { transform: scale(0) rotate(-20deg); opacity:0; } to { transform: scale(1) rotate(0); opacity:1; } }
+  .ovl-title { font-family: 'Playfair Display', serif; font-size: 3rem; font-weight: 900; color: var(--honey); margin-bottom: 8px; animation: fadeUp 0.5s 0.25s both; }
+  .ovl-sub   { font-family: 'DM Mono', monospace; font-size: 0.85rem; color: #FDE68A; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 28px; animation: fadeUp 0.5s 0.4s both; }
+  .ovl-score { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--cream); margin-bottom: 36px; animation: fadeUp 0.5s 0.55s both; }
+  .ovl-close { background: var(--honey); border: none; border-radius: 24px; padding: 14px 36px; font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--dark); cursor: pointer; transition: filter 0.15s; animation: fadeUp 0.5s 0.7s both; }
+  .ovl-close:hover { filter: brightness(1.08); }
+  @keyframes fadeUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 201; }
+
+  @media (max-width: 680px) { .game-layout { flex-direction: column; align-items: center; } .right-panel { width: 340px; } .timer-wrap { flex-wrap: wrap; justify-content: center; } }
+</style>
+</head>
+<body>
+
+<h1>Expression <span>Hive</span></h1>
+<p class="subtitle">Build expressions that equal the target · center number required</p>
+<p class="rules-line">Each number used scores 1 point · longer expressions score more · the same number can't be both added and subtracted, or both multiplied and divided</p>
+
+<div class="daily-badge">
+  <span class="badge-pill">🐝 Daily</span>
+  <span class="badge-date" id="badge-date"></span>
+  <span class="next-puzzle" id="next-puzzle"></span>
+</div>
+
+<!-- Timer -->
+<div class="timer-wrap">
+  <div class="timer-center" id="timer-center">
+    <div class="timer-text" id="timer-text">2:00</div>
+    <div class="timer-track"><div class="timer-bar" id="timer-bar"></div></div>
+    <div class="timer-goal">Goal: 40 points</div>
+  </div>
+  <button class="restart-btn" onclick="restartGame()">↺ Restart</button>
+  <button class="mode-btn" id="mode-btn" onclick="toggleMode()">∞ Endless Mode</button>
+</div>
+
+<div class="game-layout">
+  <div class="left-panel">
+    <div class="target-display">
+      <div class="label">Target</div>
+      <div class="target-number" id="target-display"></div>
+    </div>
+    <div class="expression-bar" id="expr-bar">
+      <span class="expr-text" id="expr-text"></span>
+      <span class="cursor"></span>
+    </div>
+    <div class="honeycomb-wrap" id="honeycomb"></div>
+    <div class="ops-row">
+      <button class="op-btn" onclick="pressOp('+')">+</button>
+      <button class="op-btn" onclick="pressOp('−')">−</button>
+      <button class="op-btn" onclick="pressOp('×')">×</button>
+      <button class="op-btn" onclick="pressOp('÷')">÷</button>
+      <button class="op-btn" onclick="pressOp('(')">(</button>
+      <button class="op-btn" onclick="pressOp(')')">)</button>
+    </div>
+    <div class="action-row">
+      <button class="action-btn btn-delete" id="btn-delete" onclick="deleteLast()">⌫ Del</button>
+      <button class="action-btn btn-clear"  id="btn-clear"  onclick="clearExpr()">Clear</button>
+      <button class="action-btn btn-enter"  id="btn-enter"  onclick="enterExpr()">Enter ↵</button>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="score-box">
+      <div class="label">Score</div>
+      <div class="score-num" id="score-display">0</div>
+      <div class="score-goal" id="score-goal">of 40 to win</div>
+      <div class="score-fill" id="score-fill" style="width:0%"></div>
+    </div>
+    <div class="found-list-wrap">
+      <div class="label">Found Expressions</div>
+      <div id="found-list"><div class="empty-hint">No expressions yet.<br>Find ones that equal the target!</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="ovl-emoji" id="ovl-emoji">🐝</div>
+  <div class="ovl-title" id="ovl-title">Hive Mind!</div>
+  <div class="ovl-sub"   id="ovl-sub"></div>
+  <div class="ovl-score" id="ovl-score"></div>
+  <button class="ovl-close" onclick="closeOverlay()">View Results</button>
+</div>
+<canvas id="confetti-canvas"></canvas>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// ── Puzzle generation (seeded by date) ────────
+// ══════════════════════════════════════════════
+
+const CENTER_POOL = [2, 3, 4, 5, 6];
+// Balanced pool: composites and multiples with many factor pairs, nothing > 25, no 1s or 7s
+const OUTER_POOL  = [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 25];
+const GEN_OPS = ['+', '-', '*', '/'];
+
+// Mulberry32 seeded PRNG — deterministic, fast
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function dateToSeed(dateStr) {
+  // Deterministic hash of "YYYY-MM-DD"
+  let h = 2166136261;
+  for (const c of dateStr) { h ^= c.charCodeAt(0); h = (Math.imul(h, 16777619)) >>> 0; }
+  return h;
+}
+
+function pickRandom(arr, rng) { return arr[Math.floor(rng() * arr.length)]; }
+
+function getTodayString() {
+  // Pacific Time date — puzzle flips at midnight PT (auto-handles PST/PDT)
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+}
+
+function generateDailyPuzzle(dateStr) {
+  const rng = mulberry32(dateToSeed(dateStr));
+  // Try up to 500 times to land in the sweet spot (20–180 solutions)
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const center = pickRandom(CENTER_POOL, rng);
+    // Pick 6 outer numbers with NO duplicates and no repeat of the center value
+    const outerPool = OUTER_POOL.filter(n => n !== center);
+    const outer = [];
+    const used = new Set();
+    for (let i = 0; i < 6; i++) {
+      const available = outerPool.filter(n => !used.has(n));
+      if (available.length === 0) break; // safety — pool is large enough this won't happen
+      const pick = pickRandom(available, rng);
+      outer.push(pick);
+      used.add(pick);
+    }
+    if (outer.length < 6) continue;
+    const allNums = [center, ...outer];
+
+    // Build target from a 2- or 3-number seed expression using numbers from the puzzle
+    // Balanced mix: 60% two-number, 40% three-number
+    const seedLen = rng() < 0.6 ? 2 : 3;
+    const seedNums = Array.from({length: seedLen}, () => pickRandom(allNums, rng));
+    const seedOps  = Array.from({length: seedLen - 1}, () => pickRandom(GEN_OPS, rng));
+
+    // Evaluate the seed to produce the target
+    let target;
+    try {
+      const parts = [];
+      for (let i = 0; i < seedLen; i++) {
+        parts.push(String(seedNums[i]));
+        if (i < seedOps.length) parts.push(seedOps[i]);
+      }
+      const val = Function('"use strict"; return (' + parts.join('') + ')')();
+      if (!Number.isInteger(val) || val < 2 || val > 99) continue;
+      target = val;
+    } catch(e) { continue; }
+
+    // Quick solution count — reject if too easy or too hard
+    const count = quickSolve(allNums, center, target);
+    if (count >= 20 && count <= 180) {
+      return { center, outer, target };
+    }
+  }
+  // Fallback — should never be needed but just in case
+  return { center: 4, outer: [2, 3, 5, 6, 8, 12], target: 24 };
+}
+
+// ── Lean solver for generation (no display strings needed) ──
+function canonOp(op) {
+  if (op === '÷') return '/'; if (op === '×') return '*'; if (op === '−') return '-'; return op;
+}
+
+function solverCheckRedundancy(toks) {
+  const numOps = {};
+  for (let i = 0; i < toks.length; i++) {
+    if (toks[i][0] !== 'n') continue;
+    const n = toks[i][1];
+    if (!numOps[n]) numOps[n] = new Set();
+    let found = false;
+    for (let j = i-1; j>=0; j--) {
+      if (toks[j][0]==='p') break;
+      if (toks[j][0]==='o') { numOps[n].add(toks[j][1]); found=true; break; }
+    }
+    if (!found) for (let j = i+1; j<toks.length; j++) {
+      if (toks[j][0]==='p') break;
+      if (toks[j][0]==='o') { numOps[n].add(toks[j][1]); break; }
+    }
+  }
+  for (const s of Object.values(numOps)) {
+    if (s.has('*')&&s.has('/')) return false;
+    if (s.has('+')&&s.has('-')) return false;
+  }
+  return true;
+}
+
+function solverEval(toks) {
+  try {
+    const js = toks.map(t => t[0]==='o' ? t[1] : String(t[1])).join('');
+    const r = Function('"use strict"; return (' + js + ')')();
+    return (typeof r==='number' && isFinite(r)) ? r : null;
+  } catch(e) { return null; }
+}
+
+function quickSolve(allNums, center, target) {
+  const solutions = new Set();
+  function search(cur, numCounts, centerSeen) {
+    const k = cur.filter(t=>t[0]==='n').length;
+    if (k >= 1 && centerSeen) {
+      const last = cur[cur.length-1];
+      if (last && last[0]==='n') {
+        const val = solverEval(cur);
+        if (val !== null && Math.abs(val - target) < 1e-9)
+          solutions.add(cur.map(t=>t[1]).join(','));
+      }
+    }
+    if (k >= 4) return; // cap at 4 numbers for speed
+    const last = cur.length === 0 ? null : cur[cur.length-1];
+    const needOp = last && last[0]==='n';
+    if (needOp) {
+      for (const op of GEN_OPS) { cur.push(['o',op]); search(cur,numCounts,centerSeen); cur.pop(); }
+    } else {
+      for (const n of allNums) {
+        if ((numCounts[n]||0) >= 2) continue;
+        numCounts[n] = (numCounts[n]||0)+1;
+        cur.push(['n',n]);
+        if (solverCheckRedundancy(cur)) search(cur,numCounts,centerSeen||n===center);
+        cur.pop();
+        numCounts[n]--;
+      }
+    }
+  }
+  search([],{},false);
+  return solutions.size;
+}
+
+// ── Generate today's puzzle ──
+const todayStr = getTodayString();
+const puzzle = generateDailyPuzzle(todayStr);
+
+// ── Populate date badge ──
+(function() {
+  const d = new Date();
+  const opts = { weekday: 'long', month: 'long', day: 'numeric' };
+  document.getElementById('badge-date').textContent =
+    d.toLocaleDateString(undefined, opts);
+
+  // Countdown to next puzzle (Pacific Time midnight)
+  function updateCountdown() {
+    // Parse current time-of-day in PT, then count down to 24h mark
+    const ptDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const msSinceMidnight = (ptDate.getHours() * 3600 + ptDate.getMinutes() * 60 + ptDate.getSeconds()) * 1000;
+    const diff = 86400000 - msSinceMidnight;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('next-puzzle').textContent =
+      `Next puzzle in ${h}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  // Check for day rollover — reload if date changes while page is open
+  setInterval(() => {
+    if (getTodayString() !== todayStr) location.reload();
+  }, 30000);
+})();
+
+document.getElementById('target-display').textContent = puzzle.target;
+
+// ══════════════════════════════════════════════
+// ── Game logic (identical to main game) ───────
+// ══════════════════════════════════════════════
+
+const TOTAL_SECONDS = 120;
+const WIN_SCORE = 40;
+
+let tokens = [], score = 0, foundExprs = new Set(), state = 'needNum', centerUsed = false;
+let secondsLeft = TOTAL_SECONDS;
+let timerInterval = null;
+let gameOver = false;
+let timerStarted = false;
+let endless = false;
+
+// ── Mode toggle ──
+function toggleMode() {
+  endless = !endless;
+  document.getElementById('mode-btn').textContent = endless ? '⏱ Original Mode' : '∞ Endless Mode';
+  document.getElementById('timer-center').style.display = endless ? 'none' : 'flex';
+  document.getElementById('score-goal').textContent = endless ? 'endless mode' : 'of 40 to win';
+  restartGame();
+}
+
+// ── Timer ──
+function startTimer() {
+  if (endless) return;
+  timerStarted = true;
+  timerInterval = setInterval(() => {
+    secondsLeft--;
+    updateTimerUI();
+    if (secondsLeft <= 0) endGame(false);
+  }, 1000);
+}
+
+function updateTimerUI() {
+  const m = Math.floor(secondsLeft / 60);
+  const s = secondsLeft % 60;
+  document.getElementById('timer-text').textContent = `${m}:${String(s).padStart(2,'0')}`;
+  document.getElementById('timer-bar').style.width = (secondsLeft / TOTAL_SECONDS * 100) + '%';
+  const urgent = secondsLeft <= 20;
+  document.getElementById('timer-text').classList.toggle('urgent', urgent);
+  document.getElementById('timer-bar').classList.toggle('urgent', urgent);
+}
+
+function endGame(won) {
+  gameOver = true;
+  clearInterval(timerInterval);
+  disableControls();
+  document.getElementById('ovl-emoji').textContent = won ? '🏆' : '🐝';
+  document.getElementById('ovl-title').textContent = won ? 'Hive Mind!' : "Time's Up!";
+  document.getElementById('ovl-sub').textContent   = won ? 'You reached 50 points!' : 'The buzzer sounds…';
+  document.getElementById('ovl-score').textContent = `Final score: ${score} point${score !== 1 ? 's' : ''}`;
+  document.getElementById('overlay').classList.add('show');
+  if (won) launchConfetti();
+}
+
+function disableControls() {
+  document.querySelectorAll('.op-btn, #btn-delete, #btn-clear, #btn-enter').forEach(b => b.disabled = true);
+  document.querySelectorAll('.hex-btn').forEach(b => b.classList.add('disabled-game'));
+}
+
+function restartGame() {
+  clearInterval(timerInterval);
+  secondsLeft = TOTAL_SECONDS;
+  timerInterval = null;
+  gameOver = false;
+  timerStarted = false;
+  if (!endless) {
+    updateTimerUI();
+    document.getElementById('timer-text').classList.remove('urgent');
+    document.getElementById('timer-bar').classList.remove('urgent');
+  }
+  tokens = []; score = 0; foundExprs = new Set(); state = 'needNum'; centerUsed = false;
+  renderExpr();
+  updateScoreUI();
+  document.getElementById('found-list').innerHTML =
+    '<div class="empty-hint">No expressions yet.<br>Find ones that equal the target!</div>';
+  document.querySelectorAll('.op-btn, #btn-delete, #btn-clear, #btn-enter').forEach(b => b.disabled = false);
+  document.querySelectorAll('.hex-btn').forEach(b => b.classList.remove('disabled-game'));
+  document.getElementById('overlay').classList.remove('show');
+  stopConfetti();
+}
+
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('show');
+  stopConfetti();
+}
+
+// ── Redundancy check ──
+function checkRedundancy(toks) {
+  const numOps = {};
+  for (let i = 0; i < toks.length; i++) {
+    if (toks[i].type !== 'num') continue;
+    const n = toks[i].value;
+    if (!numOps[n]) numOps[n] = new Set();
+    let found = false;
+    for (let j = i-1; j>=0; j--) {
+      if (toks[j].type==='paren') break;
+      if (toks[j].type==='op') { numOps[n].add(canonOp(toks[j].value)); found=true; break; }
+    }
+    if (!found) for (let j = i+1; j<toks.length; j++) {
+      if (toks[j].type==='paren') break;
+      if (toks[j].type==='op') { numOps[n].add(canonOp(toks[j].value)); break; }
+    }
+  }
+  for (const s of Object.values(numOps)) {
+    if (s.has('*')&&s.has('/')) return false;
+    if (s.has('+')&&s.has('-')) return false;
+  }
+  return true;
+}
+
+// ── Honeycomb ──
+function buildHoneycomb() {
+  const wrap = document.getElementById('honeycomb');
+  wrap.innerHTML = '';
+  const cx = 150, cy = 138, R = 96;
+  const positions = [
+    { x: cx, y: cy, isCenter: true, num: puzzle.center },
+    { x: cx + R*Math.cos(-Math.PI/2),   y: cy + R*Math.sin(-Math.PI/2),   num: puzzle.outer[0] },
+    { x: cx + R*Math.cos(-Math.PI/6),   y: cy + R*Math.sin(-Math.PI/6),   num: puzzle.outer[1] },
+    { x: cx + R*Math.cos(Math.PI/6),    y: cy + R*Math.sin(Math.PI/6),    num: puzzle.outer[2] },
+    { x: cx + R*Math.cos(Math.PI/2),    y: cy + R*Math.sin(Math.PI/2),    num: puzzle.outer[3] },
+    { x: cx + R*Math.cos(5*Math.PI/6),  y: cy + R*Math.sin(5*Math.PI/6),  num: puzzle.outer[4] },
+    { x: cx + R*Math.cos(-5*Math.PI/6), y: cy + R*Math.sin(-5*Math.PI/6), num: puzzle.outer[5] },
+  ];
+  positions.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'hex-btn ' + (p.isCenter ? 'center' : 'outer');
+    btn.style.left = (p.x - 44) + 'px';
+    btn.style.top  = (p.y - 44) + 'px';
+    btn.innerHTML = `<div class="hex-shape">${p.num}</div>`;
+    btn.addEventListener('click', () => pressNum(p.num, p.isCenter, btn));
+    wrap.appendChild(btn);
+  });
+}
+
+// ── Input handlers ──
+function pressNum(num, isCenter, btn) {
+  if (gameOver) return;
+  if (!timerStarted) startTimer();
+  if (state !== 'needNum') { doShake(); showToast('Add an operator first!'); return; }
+  const candidate = [...tokens, { type: 'num', value: num, display: String(num), isCenter }];
+  if (!checkRedundancy(candidate)) {
+    doShake(); showToast(`${num} already used with the opposite operator`); return;
+  }
+  tokens = candidate;
+  if (isCenter) centerUsed = true;
+  state = 'needOp';
+  renderExpr();
+  if (btn) { btn.classList.add('tapped'); setTimeout(() => btn.classList.remove('tapped'), 200); }
+}
+
+function pressOp(op) {
+  if (gameOver) return;
+  if (!timerStarted) startTimer();
+  if (op === '(') {
+    if (state !== 'needNum') { doShake(); showToast('Operator expected before ('); return; }
+    tokens.push({ type: 'paren', value: '(', display: '(' });
+    renderExpr(); return;
+  }
+  if (op === ')') {
+    if (state !== 'needOp') { doShake(); showToast('Number expected before )'); return; }
+    const opens  = tokens.filter(t => t.value === '(').length;
+    const closes = tokens.filter(t => t.value === ')').length;
+    if (closes >= opens) { doShake(); showToast('No matching ('); return; }
+    tokens.push({ type: 'paren', value: ')', display: ')' });
+    renderExpr(); return;
+  }
+  if (state !== 'needOp') { doShake(); showToast('Select a number first!'); return; }
+  tokens.push({ type: 'op', value: op, display: op });
+  state = 'needNum';
+  renderExpr();
+}
+
+function deleteLast() {
+  if (gameOver) return;
+  if (!tokens.length) return;
+  const last = tokens.pop();
+  if (last.isCenter) centerUsed = tokens.some(t => t.isCenter);
+  if (!tokens.length) { state = 'needNum'; }
+  else { const t = tokens[tokens.length-1]; state = (t.type==='num'||t.value===')')?'needOp':'needNum'; }
+  renderExpr();
+}
+
+function clearExpr() {
+  if (gameOver) return;
+  tokens = []; state = 'needNum'; centerUsed = false; renderExpr();
+}
+
+function renderExpr() {
+  document.getElementById('expr-text').textContent = tokens.map(t => t.display).join(' ');
+}
+
+function tryEvaluate() {
+  try {
+    const js = tokens.map(t => {
+      if (t.type !== 'op') return t.display;
+      if (t.value === '−') return '-';
+      if (t.value === '×') return '*';
+      if (t.value === '÷') return '/';
+      return t.value;
+    }).join('');
+    if (!/^[\d\s\+\-\*\/\(\)\.]+$/.test(js)) return null;
+    if ((js.match(/\(/g)||[]).length !== (js.match(/\)/g)||[]).length) return null;
+    const r = Function('"use strict"; return (' + js + ')')();
+    return (typeof r === 'number' && isFinite(r)) ? r : null;
+  } catch(e) { return null; }
+}
+
+function enterExpr() {
+  if (gameOver) return;
+  if (!timerStarted) startTimer();
+  if (!tokens.length) { showToast('Nothing to enter!'); return; }
+  if (state !== 'needOp') { doShake(); showToast('Expression is incomplete'); return; }
+  if (!centerUsed) { doShake(); showToast(`Center number (${puzzle.center}) must be used!`); return; }
+  if (tokens.filter(t=>t.value==='(').length !== tokens.filter(t=>t.value===')').length) {
+    doShake(); showToast('Unbalanced parentheses'); return;
+  }
+  const val = tryEvaluate();
+  if (val === null) { doShake(); showToast('Invalid expression'); return; }
+  const exprStr = tokens.map(t => t.display).join(' ');
+  if (foundExprs.has(exprStr)) { showToast('Already found!'); return; }
+  if (Math.abs(val - puzzle.target) < 1e-9) {
+    const pts = tokens.filter(t => t.type === 'num').length;
+    score += pts;
+    foundExprs.add(exprStr);
+    addFoundItem(exprStr, pts);
+    updateScoreUI();
+    showToast(`+${pts} point${pts > 1 ? 's' : ''}! 🎉`);
+    clearExpr();
+    if (score >= WIN_SCORE && !endless) setTimeout(() => endGame(true), 400);
+  } else {
+    doShake();
+    showToast(`= ${Number.isInteger(val) ? val : parseFloat(val.toFixed(6))}, not ${puzzle.target}`);
+  }
+}
+
+function updateScoreUI() {
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('score-fill').style.width = Math.min(100, score / WIN_SCORE * 100) + '%';
+}
+
+function addFoundItem(expr, pts) {
+  const list = document.getElementById('found-list');
+  if (list.querySelector('.empty-hint')) list.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'found-item';
+  item.innerHTML = `<span class="found-expr">${expr} = ${puzzle.target}</span><span class="found-pts">+${pts}</span>`;
+  list.insertBefore(item, list.firstChild);
+}
+
+function doShake() {
+  const bar = document.getElementById('expr-bar');
+  bar.classList.remove('shake'); void bar.offsetWidth; bar.classList.add('shake');
+  setTimeout(() => bar.classList.remove('shake'), 400);
+}
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Confetti ──
+let confettiAnimFrame = null;
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const colors = ['#F4A500','#FDE68A','#C27D00','#FFFBF0','#4A3520','#fff'];
+  let particles = Array.from({length:140}, () => ({
+    x: Math.random()*canvas.width, y: -60 - Math.random()*canvas.height*0.4,
+    w: 6+Math.random()*8, h: 10+Math.random()*6,
+    color: colors[Math.floor(Math.random()*colors.length)],
+    vy: 2.5+Math.random()*4, vx: (Math.random()-0.5)*3,
+    rot: Math.random()*Math.PI*2, rotV: (Math.random()-0.5)*0.15,
+  }));
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p => {
+      p.y+=p.vy; p.x+=p.vx; p.rot+=p.rotV;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      ctx.fillStyle=p.color; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    });
+    particles = particles.filter(p => p.y < canvas.height+20);
+    if (particles.length>0) confettiAnimFrame = requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  confettiAnimFrame = requestAnimationFrame(draw);
+}
+function stopConfetti() {
+  if (confettiAnimFrame) cancelAnimationFrame(confettiAnimFrame);
+  document.getElementById('confetti-canvas').getContext('2d')
+    .clearRect(0,0,window.innerWidth,window.innerHeight);
+}
+
+// ── Init ──
+buildHoneycomb();
+renderExpr();
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Enter')     { enterExpr(); return; }
+  if (e.key==='Backspace') { deleteLast(); return; }
+  if (e.key==='Escape')    { clearExpr(); return; }
+  if (e.key==='+') pressOp('+');
+  if (e.key==='-') pressOp('−');
+  if (e.key==='*') pressOp('×');
+  if (e.key==='/') pressOp('÷');
+  if (e.key==='(') pressOp('(');
+  if (e.key===')') pressOp(')');
+  const n = parseInt(e.key);
+  if (!isNaN(n)) {
+    if (n === puzzle.center) pressNum(n, true, null);
+    else if (puzzle.outer.includes(n)) pressNum(n, false, null);
+  }
+});
+</script>
+</body>
+</html>
